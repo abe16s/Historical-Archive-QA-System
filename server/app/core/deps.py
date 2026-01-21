@@ -1,12 +1,13 @@
 from functools import lru_cache
 
 from app.core.config import settings
-from app.infra.rag_engine import initialize_llm
+from app.infra.llm import initialize_llm
 from app.infra.vector_store import initialize_vector_store
 from app.infra.embeddings import initialize_embedding_model
 from app.services.rag_service import RAGService
 from app.services.storage_service import StorageService
 from app.services.document_service import DocumentService
+from app.services.conversation_service import ConversationService
 
 
 @lru_cache
@@ -29,7 +30,7 @@ def get_embedding_model():
 @lru_cache
 def get_llm_client():
     """
-    Lazily initialize and cache the LLM client (Gemini / OpenAI via LangChain).
+    Lazily initialize and cache the Gemini LLM client via direct API calls.
     """
     return initialize_llm()
 
@@ -67,4 +68,9 @@ def get_document_service() -> DocumentService:
         embedding_model=get_embedding_model(),
     )
 
+
+@lru_cache
+def get_conversation_service() -> ConversationService:
+    """Provide a singleton ConversationService for conversation management."""
+    return ConversationService()
 

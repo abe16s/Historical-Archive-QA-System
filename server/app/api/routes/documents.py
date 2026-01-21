@@ -5,12 +5,12 @@ from urllib.parse import unquote
 
 from app.schemas.documents import (
     DocumentUploadResponse,
-    DocumentIndexRequest,
     DocumentIndexResponse,
     DocumentInfo,
     IndexedDocumentInfo,
     IndexedDocumentDeleteResponse,
 )
+from pydantic import BaseModel
 from app.core.deps import get_document_service
 from app.services.document_service import DocumentService
 
@@ -47,21 +47,18 @@ async def upload_document(
         )
 
 
+class IndexRequest(BaseModel):
+    filename: str
+
+
 @router.post("/index", response_model=DocumentIndexResponse)
 async def index_document(
-    payload: DocumentIndexRequest,
+    payload: IndexRequest,
     service: DocumentService = Depends(get_document_service),
 ) -> DocumentIndexResponse:
-    """
-    Index an already-uploaded document by its file_path or filename.
-    
-    Provide either file_path OR filename, but not both.
-    """
+    """Index an already-uploaded document by its filename."""
     try:
-        if payload.file_path:
-            return await service.index_uploaded(file_path=payload.file_path)
-        else:
-            return await service.index_by_filename(payload.filename)
+        return await service.index_by_filename(payload.filename)
     except HTTPException:
         raise
     except Exception as exc:  # pragma: no cover

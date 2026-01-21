@@ -1,6 +1,6 @@
 from datetime import datetime
 from pathlib import Path
-from typing import List
+from typing import List, Dict, Any
 
 from fastapi import HTTPException, UploadFile
 
@@ -175,7 +175,7 @@ class DocumentService:
         file_path = matching_file["key"]
         return await self.index_uploaded(file_path)
 
-    def _extract_text_for_indexing(self, content: bytes, filename: str) -> str:
+    def _extract_text_for_indexing(self, content: bytes, filename: str) -> str | List[Dict[str, Any]]:
         """Extract text based on file extension."""
         file_ext = Path(filename).suffix.lower()
 

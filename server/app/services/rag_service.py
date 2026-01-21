@@ -1,7 +1,6 @@
 from dataclasses import dataclass
 from datetime import datetime, timezone
-from typing import List, Any
-from uuid import uuid4
+from typing import List, Any, Optional, Dict
 
 from app.core.config import settings
 from app.infra.rag_engine import rag_pipeline
@@ -32,7 +31,11 @@ class RAGService:
         self._top_k = top_k or settings.TOP_K_RETRIEVAL
         self._temperature = temperature or settings.LLM_TEMPERATURE
 
-    async def answer_question(self, query: str) -> RAGResult:
+    async def answer_question(
+        self, 
+        query: str, 
+        conversation_history: Optional[List[Dict[str, str]]] = None
+    ) -> RAGResult:
         """Run the RAG pipeline for a query and return a structured result."""
         result = rag_pipeline(
             query=query,
@@ -41,9 +44,9 @@ class RAGService:
             llm_client=self._llm_client,
             top_k=self._top_k,
             temperature=self._temperature,
+            conversation_history=conversation_history,
         )
 
-        conversation_id = str(uuid4())
         timestamp = datetime.now(timezone.utc)
 
         return RAGResult(
@@ -51,6 +54,6 @@ class RAGService:
             sources=result.get("saved", result.get("sources", []))
             if isinstance(result, dict)
             else [],
-            conversation_id=conversation_id,
+            conversation_id="",  # Will be set by the route handler
             timestamp=timestamp,
         )
