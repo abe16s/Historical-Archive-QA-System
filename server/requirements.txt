@@ -1,0 +1,21 @@
+# Web Framework
+fastapi>=0.104.0
+uvicorn[standard]>=0.24.0
+
+# Data Validation & Settings
+pydantic>=2.0.0
+pydantic-settings>=2.0.0
+
+# Vector Database
+chromadb>=0.4.0
+
+# Embeddings
+sentence-transformers>=2.2.0
+
+# LLM Providers (LangChain)
+langchain-core>=0.1.0
+langchain-google-genai>=0.0.5
+langchain-openai>=0.0.2
+
+# PDF Processing
+PyPDF2>=3.0.0
