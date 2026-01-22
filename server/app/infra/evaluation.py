@@ -70,53 +70,144 @@ def get_available_sources(context_chunks: List[Dict[str, Any]]) -> Dict[str, set
 
 def evaluate_citation_accuracy(
     answer: str,
-    context_chunks: List[Dict[str, Any]]
+    context_chunks: List[Dict[str, Any]],
+    provided_sources: List[str] = None
 ) -> CitationAccuracy:
     """
-    Evaluate the accuracy of citations in the answer.
+    Evaluate the accuracy of citations/sources.
     
-    Checks if citations match actual sources in context.
+    Since citations are no longer in the answer text, we check if:
+    1. Sources are provided separately and match context
+    2. All context sources are represented in provided sources
     """
-    citations = extract_citations(answer)
     available_sources = get_available_sources(context_chunks)
-    
-    # Get all source names from context
     context_sources = set(available_sources.keys())
     
-    valid_citations = 0
-    invalid_citations = []
+    # Try to extract citations from answer (for backward compatibility)
+    citations = extract_citations(answer)
     
-    for citation in citations:
-        source = citation['source']
-        page = citation['page']
+    # If sources are provided separately, use those
+    if provided_sources:
+        # Parse each source individually (each source+page combination is a separate citation)
+        source_page_pairs = []
+        for source_str in provided_sources:
+            # Match format: "source.pdf (Page 188)" or just "source.pdf"
+            match = re.match(r'^(.+?)\s*\(Page\s+(\d+|\?)\)$', source_str.strip())
+            if match:
+                source_name = match.group(1).strip()
+                page = match.group(2).strip()
+                source_page_pairs.append((source_name, page, source_str))
+            else:
+                # No page number, just source name
+                source_page_pairs.append((source_str.strip(), None, source_str))
         
-        # Check if source exists in context
-        if source in available_sources:
-            # Check if page is valid (or if '?' is used, that's acceptable)
-            # Page numbers are normalized to strings in get_available_sources, so direct comparison works
-            page_str = str(page).strip()
-            if page_str == '?' or len(available_sources[source]) == 0:
+        # Validate each source+page pair against context
+        valid_citations = 0
+        invalid_citations = []
+        
+        for source_name, page, original_str in source_page_pairs:
+            is_valid = False
+            
+            if source_name in available_sources:
+                context_pages = available_sources[source_name]
+                
+                # If page is specified
+                if page is not None:
+                    if page == '?':
+                        # '?' is acceptable as unknown page
+                        is_valid = True
+                    elif context_pages:
+                        # Check if the specific page exists in context
+                        # Normalize page numbers for comparison
+                        page_str = str(page).strip()
+                        # Try both string and int comparison
+                        page_int = None
+                        try:
+                            page_int = int(page_str)
+                        except (ValueError, TypeError):
+                            pass
+                        
+                        # Check if page matches (as string or int)
+                        if page_str in context_pages:
+                            is_valid = True
+                        elif page_int is not None:
+                            # Try matching as integer
+                            context_pages_ints = {int(p) for p in context_pages if str(p).isdigit()}
+                            if page_int in context_pages_ints:
+                                is_valid = True
+                        
+                        if not is_valid:
+                            invalid_citations.append(original_str)
+                    else:
+                        # No page info in context, but source exists - accept it
+                        is_valid = True
+                else:
+                    # No page specified, just check source exists
+                    is_valid = True
+            else:
+                # Source doesn't exist in context
+                invalid_citations.append(original_str)
+                is_valid = False
+            
+            if is_valid:
                 valid_citations += 1
-            elif page_str in available_sources[source]:
-                valid_citations += 1
+        
+        # Find sources in context but not in provided sources
+        provided_source_names = {pair[0] for pair in source_page_pairs}
+        missing_sources = list(context_sources - provided_source_names)
+        
+        total_citations = len(provided_sources)
+        citation_accuracy = valid_citations / total_citations if total_citations > 0 else 0.0
+        
+        return CitationAccuracy(
+            total_citations=total_citations,
+            valid_citations=valid_citations,
+            citation_accuracy=citation_accuracy,
+            missing_sources=missing_sources,
+            invalid_citations=invalid_citations
+        )
+    
+    # Fallback: use citations from answer text (for backward compatibility)
+    if citations:
+        valid_citations = 0
+        invalid_citations = []
+        
+        for citation in citations:
+            source = citation['source']
+            page = citation['page']
+            
+            if source in available_sources:
+                page_str = str(page).strip()
+                if page_str == '?' or len(available_sources[source]) == 0:
+                    valid_citations += 1
+                elif page_str in available_sources[source]:
+                    valid_citations += 1
+                else:
+                    invalid_citations.append(citation['full_match'])
             else:
                 invalid_citations.append(citation['full_match'])
-        else:
-            invalid_citations.append(citation['full_match'])
+        
+        cited_sources = {c['source'] for c in citations}
+        missing_sources = list(context_sources - cited_sources)
+        
+        total_citations = len(citations)
+        citation_accuracy = valid_citations / total_citations if total_citations > 0 else 0.0
+        
+        return CitationAccuracy(
+            total_citations=total_citations,
+            valid_citations=valid_citations,
+            citation_accuracy=citation_accuracy,
+            missing_sources=missing_sources,
+            invalid_citations=invalid_citations
+        )
     
-    # Find sources in context but not cited
-    cited_sources = {c['source'] for c in citations}
-    missing_sources = list(context_sources - cited_sources)
-    
-    total_citations = len(citations)
-    citation_accuracy = valid_citations / total_citations if total_citations > 0 else 0.0
-    
+    # No citations or sources provided - all sources are missing
     return CitationAccuracy(
-        total_citations=total_citations,
-        valid_citations=valid_citations,
-        citation_accuracy=citation_accuracy,
-        missing_sources=missing_sources,
-        invalid_citations=invalid_citations
+        total_citations=0,
+        valid_citations=0,
+        citation_accuracy=0.0,
+        missing_sources=list(context_sources),
+        invalid_citations=[]
     )
 
 
@@ -141,19 +232,28 @@ def evaluate_context_relevance(
     
     similarities = []
     for chunk in context_chunks:
-        # Try to get similarity score from metadata or distance
-        similarity = chunk.get('similarity') or chunk.get('distance')
-        if similarity is not None:
-            # Convert distance to similarity if needed (assuming cosine distance)
-            if isinstance(similarity, (int, float)) and similarity <= 1.0:
-                # If it's a distance, convert to similarity (1 - distance)
-                if similarity < 0:
-                    similarity = 1.0 - abs(similarity)
-                similarities.append(float(similarity))
+        # Get similarity score (now included in search results)
+        similarity = chunk.get('similarity')
+        if similarity is not None and isinstance(similarity, (int, float)):
+            similarities.append(float(similarity))
+        else:
+            # Fallback: try to get distance and convert
+            distance = chunk.get('distance')
+            if distance is not None and isinstance(distance, (int, float)):
+                # Convert cosine distance to similarity (1 - distance/2)
+                similarity = max(0.0, min(1.0, 1.0 - (float(distance) / 2.0)))
+                similarities.append(similarity)
     
     if not similarities:
-        # If no similarity scores available, assume moderate relevance
-        similarities = [0.6] * len(context_chunks)
+        # If no similarity scores available, cannot evaluate relevance accurately
+        # Return low scores to indicate uncertainty
+        return ContextRelevance(
+            average_similarity=0.0,
+            min_similarity=0.0,
+            max_similarity=0.0,
+            relevant_chunks=0,
+            total_chunks=len(context_chunks)
+        )
     
     avg_similarity = sum(similarities) / len(similarities) if similarities else 0.0
     min_similarity = min(similarities) if similarities else 0.0
@@ -161,9 +261,9 @@ def evaluate_context_relevance(
     relevant_chunks = sum(1 for s in similarities if s >= similarity_threshold)
     
     return ContextRelevance(
-        average_similarity=avg_similarity,
-        min_similarity=min_similarity,
-        max_similarity=max_similarity,
+        average_similarity=round(avg_similarity, 3),
+        min_similarity=round(min_similarity, 3),
+        max_similarity=round(max_similarity, 3),
         relevant_chunks=relevant_chunks,
         total_chunks=len(context_chunks)
     )
@@ -198,11 +298,17 @@ def check_claim_support(claim: str, context_chunks: List[Dict[str, Any]]) -> boo
     """
     Check if a claim is supported by the context chunks.
     
-    Uses simple keyword matching and text overlap as a heuristic.
+    Uses improved semantic matching with keyword overlap and phrase matching.
     """
-    # Extract key terms from claim (simple approach)
-    claim_lower = claim.lower()
-    claim_words = set(re.findall(r'\b\w{4,}\b', claim_lower))  # Words with 4+ chars
+    if not claim or len(claim.strip()) < 10:
+        return False
+    
+    claim_lower = claim.lower().strip()
+    
+    # Remove common stop words and extract meaningful terms
+    stop_words = {'the', 'a', 'an', 'and', 'or', 'but', 'in', 'on', 'at', 'to', 'for', 'of', 'with', 'by', 'from', 'is', 'was', 'are', 'were', 'be', 'been', 'have', 'has', 'had', 'do', 'does', 'did', 'will', 'would', 'could', 'should', 'may', 'might', 'must', 'can'}
+    claim_words = set(re.findall(r'\b\w{3,}\b', claim_lower))
+    claim_words = {w for w in claim_words if w not in stop_words and len(w) > 2}
     
     if not claim_words:
         return False
@@ -210,19 +316,38 @@ def check_claim_support(claim: str, context_chunks: List[Dict[str, Any]]) -> boo
     # Check each context chunk
     for chunk in context_chunks:
         chunk_text = (chunk.get('text') or chunk.get('content') or '').lower()
-        chunk_words = set(re.findall(r'\b\w{4,}\b', chunk_text))
+        if not chunk_text:
+            continue
         
-        # Check overlap - if significant overlap, claim is likely supported
-        overlap = len(claim_words & chunk_words)
-        overlap_ratio = overlap / len(claim_words) if claim_words else 0
+        chunk_words = set(re.findall(r'\b\w{3,}\b', chunk_text))
+        chunk_words = {w for w in chunk_words if w not in stop_words and len(w) > 2}
         
-        # Also check for direct substring match (for exact quotes)
-        if any(word in chunk_text for word in claim_words if len(word) > 5):
+        # Calculate word overlap
+        overlap = claim_words & chunk_words
+        overlap_ratio = len(overlap) / len(claim_words) if claim_words else 0
+        
+        # Check for key phrases (3+ word sequences)
+        claim_phrases = []
+        claim_tokens = claim_lower.split()
+        for i in range(len(claim_tokens) - 2):
+            phrase = ' '.join(claim_tokens[i:i+3])
+            if len(phrase) > 10:  # Only meaningful phrases
+                claim_phrases.append(phrase)
+        
+        # If a key phrase appears in context, likely supported
+        if claim_phrases and any(phrase in chunk_text for phrase in claim_phrases):
             return True
         
-        # If significant word overlap, consider it supported
-        if overlap_ratio >= 0.3:  # 30% word overlap threshold
+        # If significant word overlap (40% of meaningful words), consider supported
+        if overlap_ratio >= 0.4:
             return True
+        
+        # Check for important named entities or numbers (likely factual claims)
+        important_terms = re.findall(r'\b\d+\b|\b[A-Z][a-z]+(?:\s+[A-Z][a-z]+)*\b', claim)
+        if important_terms:
+            # If important terms appear in context, likely supported
+            if any(term.lower() in chunk_text for term in important_terms):
+                return True
     
     return False
 
@@ -307,41 +432,74 @@ def generate_recommendations(metrics: EvaluationMetrics) -> List[str]:
     recommendations = []
     
     # Citation recommendations
-    if metrics.citation_accuracy.citation_accuracy < 0.8:
-        invalid_count = len(metrics.citation_accuracy.invalid_citations)
-        recommendations.append(
-            f"Improve citation accuracy: {invalid_count} invalid citations found. "
-            "Ensure all citations match sources in the retrieved context."
-        )
+    citation_acc = metrics.citation_accuracy
+    if citation_acc.citation_accuracy < 0.8:
+        invalid_count = len(citation_acc.invalid_citations)
+        total = citation_acc.total_citations
+        valid = citation_acc.valid_citations
+        
+        if invalid_count > 0:
+            recommendations.append(
+                f"Citation accuracy is {citation_acc.citation_accuracy:.1%} ({valid}/{total} valid). "
+                f"{invalid_count} invalid citation(s) found. Ensure all source citations match the retrieved context chunks."
+            )
+        elif total > 0:
+            # Low accuracy but no invalid citations - might be missing sources
+            recommendations.append(
+                f"Citation accuracy is {citation_acc.citation_accuracy:.1%} ({valid}/{total} valid). "
+                "Some sources may not be properly cited or may not match the context."
+            )
+        else:
+            recommendations.append(
+                "No sources were provided. Include source citations to improve factual grounding."
+            )
     
-    if metrics.citation_accuracy.missing_sources:
+    if citation_acc.missing_sources:
         recommendations.append(
-            f"Cite all relevant sources: {len(metrics.citation_accuracy.missing_sources)} sources in context are not cited."
+            f"Missing sources: {len(citation_acc.missing_sources)} source(s) from the retrieved context are not cited. "
+            f"Consider citing: {', '.join(citation_acc.missing_sources[:3])}"
+            + ("..." if len(citation_acc.missing_sources) > 3 else "")
         )
     
     # Relevance recommendations
-    if metrics.context_relevance.average_similarity < 0.6:
+    relevance = metrics.context_relevance
+    if relevance.average_similarity < 0.5:
         recommendations.append(
-            "Improve context retrieval: Retrieved chunks have low relevance. "
-            "Consider adjusting retrieval parameters or improving query formulation."
+            f"Low context relevance (average similarity: {relevance.average_similarity:.1%}). "
+            f"Only {relevance.relevant_chunks}/{relevance.total_chunks} chunks are above the relevance threshold. "
+            "Consider refining the query or adjusting retrieval parameters to get more relevant context."
+        )
+    elif relevance.average_similarity < 0.6:
+        recommendations.append(
+            f"Moderate context relevance (average similarity: {relevance.average_similarity:.1%}). "
+            "The retrieved chunks could be more relevant to the query."
         )
     
     # Faithfulness recommendations
-    if metrics.answer_faithfulness.faithfulness_score < 0.7:
+    faithfulness = metrics.answer_faithfulness
+    if faithfulness.faithfulness_score < 0.7:
+        unsupported_count = len(faithfulness.unsupported_claims)
         recommendations.append(
-            f"Improve answer grounding: {len(metrics.answer_faithfulness.unsupported_claims)} claims cannot be verified. "
-            "Ensure all factual claims are supported by the retrieved context."
+            f"Answer faithfulness is {faithfulness.faithfulness_score:.1%} ({faithfulness.supported_claims}/{faithfulness.total_claims} claims supported). "
+            f"{unsupported_count} claim(s) cannot be verified in the provided context. "
+            "Ensure all factual claims are directly supported by the retrieved context."
         )
     
     # Overall recommendations
-    if metrics.overall_score < 0.7:
+    if metrics.overall_score < 0.6:
         recommendations.append(
-            "Overall factual grounding needs improvement. Focus on ensuring answers are "
-            "strictly based on retrieved context and all claims are properly cited."
+            f"Overall factual grounding score is {metrics.overall_score:.1%}, which needs significant improvement. "
+            "Focus on improving citation accuracy, context relevance, and ensuring all claims are properly grounded."
+        )
+    elif metrics.overall_score < 0.7:
+        recommendations.append(
+            f"Overall factual grounding score is {metrics.overall_score:.1%}. "
+            "There is room for improvement in citation accuracy and context relevance."
         )
     elif metrics.overall_score >= 0.9:
         recommendations.append(
-            "Excellent factual grounding! The answer is well-grounded in the provided context."
+            f"Excellent factual grounding! Overall score: {metrics.overall_score:.1%}. "
+            "The answer is well-grounded in the provided context with accurate citations."
         )
     
-    return recommendations if recommendations else ["No specific recommendations. Factual grounding is good."]
+    return recommendations if recommendations else ["Factual grounding is good. No specific recommendations."]

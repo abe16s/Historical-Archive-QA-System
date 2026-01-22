@@ -34,15 +34,15 @@ class EvaluationService:
             query: The original question
             answer: The generated answer
             context_chunks: Retrieved context chunks used to generate answer
-            sources: List of source documents (optional, will be extracted from chunks if not provided)
+            sources: List of source documents with page numbers (e.g., ["doc.pdf (Page 188)"])
         
         Returns:
             EvaluationResponse with comprehensive metrics
         """
-        # Evaluate citation accuracy
-        citation_accuracy = evaluate_citation_accuracy(answer, context_chunks)
+        # Evaluate citation accuracy (now uses provided sources)
+        citation_accuracy = evaluate_citation_accuracy(answer, context_chunks, provided_sources=sources)
         
-        # Evaluate context relevance
+        # Evaluate context relevance (now uses actual similarity scores)
         context_relevance = evaluate_context_relevance(context_chunks, query)
         
         # Evaluate answer faithfulness

@@ -49,9 +49,21 @@ def rag_pipeline(
     prompt_messages = format_prompt_with_context(query, context_chunks, conversation_history)
     answer = generate_response(prompt_messages, llm_client, temperature)
 
-    sources = list(
-        {chunk.get("metadata", {}).get("source", "unknown") for chunk in context_chunks}
-    )
+    # Extract sources with page numbers
+    source_page_pairs = set()
+    for chunk in context_chunks:
+        metadata = chunk.get("metadata", {})
+        source = metadata.get("source", "unknown")
+        page = metadata.get("page")
+        
+        # Handle page number (could be int, str, or None)
+        if page is not None and page != "?" and str(page).strip():
+            page_str = str(page).strip()
+            source_page_pairs.add(f"{source} (Page {page_str})")
+        else:
+            source_page_pairs.add(source)
+    
+    sources = sorted(list(source_page_pairs))
 
     result = {"response": answer, "sources": sources}
     

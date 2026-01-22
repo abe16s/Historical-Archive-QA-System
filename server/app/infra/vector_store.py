@@ -49,6 +49,7 @@ def search_similar_documents(
     results = collection.query(
         query_embeddings=[query_embedding],
         n_results=top_k,
+        include=["documents", "metadatas", "distances"],
     )
 
     formatted_results: List[Dict[str, Any]] = []
@@ -56,13 +57,25 @@ def search_similar_documents(
         documents = results["documents"][0]
         metadatas = results.get("metadatas", [[]])[0] if results.get("metadatas") else [{}] * len(documents)
         ids = results.get("ids", [[]])[0] if results.get("ids") else [None] * len(documents)
+        distances = results.get("distances", [[]])[0] if results.get("distances") else [None] * len(documents)
 
-        for doc, metadata, doc_id in zip(documents, metadatas, ids):
+        for doc, metadata, doc_id, distance in zip(documents, metadatas, ids, distances):
+            # Convert distance to similarity (ChromaDB uses cosine distance, similarity = 1 - distance)
+            similarity = None
+            if distance is not None:
+                # ChromaDB returns cosine distance (0 = identical, 2 = opposite)
+                # Convert to similarity score (1 = identical, -1 = opposite)
+                # For evaluation, we want 0-1 range, so: similarity = 1 - (distance / 2)
+                similarity = max(0.0, min(1.0, 1.0 - (float(distance) / 2.0)))
+            
             formatted_results.append(
                 {
-                    "content": doc,
+                    "text": doc,
+                    "content": doc,  # Keep both for compatibility
                     "metadata": metadata or {},
                     "id": doc_id,
+                    "distance": distance,
+                    "similarity": similarity,
                 }
             )
 
