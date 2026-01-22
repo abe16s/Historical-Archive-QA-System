@@ -34,9 +34,17 @@ class RAGService:
     async def answer_question(
         self, 
         query: str, 
-        conversation_history: Optional[List[Dict[str, str]]] = None
+        conversation_history: Optional[List[Dict[str, str]]] = None,
+        return_context: bool = False,
     ) -> RAGResult:
-        """Run the RAG pipeline for a query and return a structured result."""
+        """
+        Run the RAG pipeline for a query and return a structured result.
+        
+        Args:
+            query: The user's question
+            conversation_history: Previous messages in the conversation
+            return_context: If True, includes context_chunks in the result for evaluation
+        """
         result = rag_pipeline(
             query=query,
             vector_store_collection=self._vector_store_collection,
@@ -45,11 +53,12 @@ class RAGService:
             top_k=self._top_k,
             temperature=self._temperature,
             conversation_history=conversation_history,
+            return_context=return_context,
         )
 
         timestamp = datetime.now(timezone.utc)
-
-        return RAGResult(
+        
+        rag_result = RAGResult(
             text=result["response"],
             sources=result.get("saved", result.get("sources", []))
             if isinstance(result, dict)
@@ -57,3 +66,9 @@ class RAGService:
             conversation_id="",  # Will be set by the route handler
             timestamp=timestamp,
         )
+        
+        # Add context_chunks to result if requested (for evaluation)
+        if return_context and isinstance(result, dict) and "context_chunks" in result:
+            rag_result.context_chunks = result["context_chunks"]
+        
+        return rag_result

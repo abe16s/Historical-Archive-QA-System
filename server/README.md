@@ -20,11 +20,20 @@ source venv/bin/activate  # On Windows: venv\Scripts\activate
 
 ### 2. Install Dependencies
 
+**Important:** Install PyTorch CPU-only version first to avoid downloading large CUDA packages (~915MB → ~200MB):
+
 ```bash
 cd server
 pip install --upgrade pip setuptools
+
+# Install CPU-only PyTorch (much smaller download, no CUDA dependencies)
+pip install torch --index-url https://download.pytorch.org/whl/cpu
+
+# Install remaining dependencies
 pip install -r requirements.txt
 ```
+
+**Note:** The CPU-only PyTorch build is sufficient since the system uses `device='cpu'` for embeddings. This significantly reduces installation time and disk space.
 
 ### 3. Configure Environment
 
@@ -184,6 +193,80 @@ Ask a question about the indexed documents.
 }
 ```
 
+### Evaluation
+
+#### Evaluate Response for Factual Grounding
+**POST** `/evaluation/evaluate`
+
+Evaluate a RAG response to assess factual grounding. This endpoint measures:
+- **Citation Accuracy**: Whether citations match actual sources in context
+- **Context Relevance**: How relevant retrieved chunks are to the query
+- **Answer Faithfulness**: Whether claims in the answer are supported by context
+- **Overall Score**: Weighted factual grounding score (0-1)
+
+**Request Body:**
+```json
+{
+  "query": "What was discussed in the document?",
+  "answer": "The document discussed historical events... [Source: document.pdf, Page: 1]",
+  "context_chunks": [
+    {
+      "content": "The document discusses...",
+      "metadata": {
+        "source": "document.pdf",
+        "page": 1
+      }
+    }
+  ],
+  "sources": ["document.pdf"]
+}
+```
+
+**Response:**
+```json
+{
+  "query": "What was discussed in the document?",
+  "answer": "The document discussed historical events...",
+  "metrics": {
+    "citation_accuracy": {
+      "total_citations": 1,
+      "valid_citations": 1,
+      "citation_accuracy": 1.0,
+      "missing_sources": [],
+      "invalid_citations": []
+    },
+    "context_relevance": {
+      "average_similarity": 0.85,
+      "min_similarity": 0.75,
+      "max_similarity": 0.95,
+      "relevant_chunks": 3,
+      "total_chunks": 3
+    },
+    "answer_faithfulness": {
+      "faithfulness_score": 0.9,
+      "supported_claims": 9,
+      "total_claims": 10,
+      "unsupported_claims": []
+    },
+    "overall_score": 0.93,
+    "evaluation_timestamp": "2024-01-01T12:00:00Z"
+  },
+  "recommendations": [
+    "Excellent factual grounding! The answer is well-grounded in the provided context."
+  ]
+}
+```
+
+#### Evaluate Chat Response (Convenience Endpoint)
+**POST** `/evaluation/evaluate-chat?query=Your question here`
+
+Convenience endpoint that runs the RAG pipeline and evaluates the result in one call.
+
+**Query Parameters:**
+- `query` (required): The question to ask and evaluate
+
+**Response:** Same as `/evaluation/evaluate` above
+
 ## API Documentation
 
 Once the server is running, visit:
@@ -195,6 +278,7 @@ Once the server is running, visit:
 1. **Upload** a document using `POST /documents/upload`
 2. **Index** the document using `POST /documents/index` (provide `file_path` or `filename`)
 3. **Ask questions** using `POST /chat/` to get answers with source citations
+4. **Evaluate responses** using `POST /evaluation/evaluate` or `POST /evaluation/evaluate-chat` to assess factual grounding
 
 ## Architecture
 
@@ -216,7 +300,8 @@ Historical-Archive-QA-System/
 │   │   ├── api/
 │   │   │   └── routes/
 │   │   │       ├── chat.py            # Chat endpoints
-│   │   │       └── documents.py       # Document endpoints
+│   │   │       ├── documents.py       # Document endpoints
+│   │   │       └── evaluation.py      # Evaluation endpoints
 │   │   ├── core/
 │   │   │   ├── config.py              # Configuration management
 │   │   │   └── deps.py                # Dependency injection
@@ -224,14 +309,17 @@ Historical-Archive-QA-System/
 │   │   │   ├── document_loader.py     # Document processing
 │   │   │   ├── embeddings.py          # Embedding generation
 │   │   │   ├── rag_engine.py          # RAG pipeline
-│   │   │   └── vector_store.py        # ChromaDB operations
+│   │   │   ├── vector_store.py        # ChromaDB operations
+│   │   │   └── evaluation.py          # Factual grounding evaluation
 │   │   ├── schemas/
 │   │   │   ├── chat.py                # Chat request/response models
-│   │   │   └── documents.py           # Document request/response models
+│   │   │   ├── documents.py           # Document request/response models
+│   │   │   └── evaluation.py          # Evaluation request/response models
 │   │   └── services/
 │   │       ├── document_service.py    # Document management service
 │   │       ├── rag_service.py         # RAG pipeline service
-│   │       └── storage_service.py      # Local file storage service
+│   │       ├── storage_service.py      # Local file storage service
+│   │       └── evaluation_service.py  # Factual grounding evaluation service
 │   ├── requirements.txt
 │   ├── uploads/                       # Uploaded documents (local storage)
 │   └── vector_db/                     # ChromaDB database
@@ -260,6 +348,42 @@ The RAG pipeline follows best practices:
 4. **Context Retrieval**: Top-K most relevant chunks retrieved based on query similarity
 5. **Answer Generation**: Gemini LLM generates answers with strict instructions to cite sources
 6. **Source Citation**: Automatic extraction of source documents and page numbers from context
+
+## Evaluation: Factual Grounding
+
+The system includes comprehensive evaluation capabilities to ensure **trustworthy historical analysis**. The evaluation module measures:
+
+### Evaluation Metrics
+
+1. **Citation Accuracy** (Weight: 30%)
+   - Validates that citations in answers match actual sources in retrieved context
+   - Detects missing citations for relevant sources
+   - Identifies invalid citations that don't match any source
+
+2. **Context Relevance** (Weight: 20%)
+   - Measures similarity scores of retrieved chunks to the query
+   - Identifies low-relevance chunks that may need better retrieval
+   - Provides average, min, and max similarity scores
+
+3. **Answer Faithfulness** (Weight: 50%)
+   - Verifies that factual claims in answers are supported by context
+   - Detects unsupported claims (potential hallucinations)
+   - Calculates faithfulness score based on claim verification
+
+4. **Overall Factual Grounding Score** (0-1)
+   - Weighted combination of all metrics
+   - Scores ≥ 0.9: Excellent factual grounding
+   - Scores 0.7-0.9: Good factual grounding
+   - Scores < 0.7: Needs improvement
+
+### Outcome: Trustworthy Historical Analysis Tool
+
+The evaluation system ensures that:
+- ✅ All answers are grounded in retrieved historical documents
+- ✅ Citations are accurate and verifiable
+- ✅ Claims can be traced back to source material
+- ✅ Users receive recommendations for improving factual grounding
+- ✅ The system maintains high standards for historical accuracy
 
 ## Error Handling
 

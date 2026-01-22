@@ -35,8 +35,14 @@ def rag_pipeline(
     top_k: int = 3,
     temperature: float = 0.7,
     conversation_history: Optional[List[Dict[str, str]]] = None,
+    return_context: bool = False,
 ) -> Dict[str, Any]:
-    """Complete RAG pipeline: retrieve context, build prompt, generate answer."""
+    """
+    Complete RAG pipeline: retrieve context, build prompt, generate answer.
+    
+    Args:
+        return_context: If True, includes context_chunks in return dict for evaluation
+    """
     context_chunks = retrieve_relevant_context(
         query, vector_store_collection, embedding_model, top_k
     )
@@ -47,6 +53,11 @@ def rag_pipeline(
         {chunk.get("metadata", {}).get("source", "unknown") for chunk in context_chunks}
     )
 
-    return {"response": answer, "sources": sources}
+    result = {"response": answer, "sources": sources}
+    
+    if return_context:
+        result["context_chunks"] = context_chunks
+    
+    return result
 
 

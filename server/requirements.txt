@@ -16,4 +16,7 @@ sentence-transformers>=2.2.0
 google-generativeai>=0.3.0
 
 # PDF Processing
-PyPDF2>=3.0.0
+pymupdf>=1.23.0
+
+# File Upload Support (required for FastAPI file uploads)
+python-multipart>=0.0.6

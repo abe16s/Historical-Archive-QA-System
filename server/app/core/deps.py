@@ -73,4 +73,3 @@ def get_document_service() -> DocumentService:
 def get_conversation_service() -> ConversationService:
     """Provide a singleton ConversationService for conversation management."""
     return ConversationService()
-
