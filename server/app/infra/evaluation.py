@@ -227,9 +227,11 @@ def evaluate_context_relevance(
         if similarity is not None and isinstance(similarity, (int, float)):
             similarities.append(float(similarity))
         else:
+            # Fallback: try to get distance and convert
             distance = chunk.get('distance')
             if distance is not None and isinstance(distance, (int, float)):
-                similarity = max(0.0, 1.0 - float(distance))
+                # Convert cosine distance to similarity (1 - distance/2)
+                similarity = max(0.0, min(1.0, 1.0 - (float(distance) / 2.0)))
                 similarities.append(similarity)
     
     if not similarities:
@@ -327,7 +329,7 @@ def check_claim_support(claim: str, context_chunks: List[Dict[str, Any]]) -> boo
             return True
         
         # If significant word overlap (40% of meaningful words), consider supported
-        if overlap_ratio >= 0.4:
+        if overlap_ratio >= 0.65:
             return True
         
         # Check for important named entities or numbers (likely factual claims)

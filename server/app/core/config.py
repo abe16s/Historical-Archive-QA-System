@@ -22,9 +22,9 @@ class Settings(BaseSettings):
     OLLAMA_MODEL: str = "llama2"
     EMBEDDING_MODEL: str = "all-MiniLM-L6-v2"
     VECTOR_DB_PATH: str = "./vector_db"
-    CHUNK_SIZE: int = 1000
+    CHUNK_SIZE: int = 500
     CHUNK_OVERLAP: int = 200
-    TOP_K_RETRIEVAL: int = 7
+    TOP_K_RETRIEVAL: int = 12
     LLM_TEMPERATURE: float = 0.7
     API_HOST: str = "0.0.0.0"
     API_PORT: int = 8000
