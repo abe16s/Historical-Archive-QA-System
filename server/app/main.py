@@ -54,9 +54,3 @@ if __name__ == "__main__":
         reload=settings.API_RELOAD,
     )
 
-
-
-
-
-
-

@@ -88,7 +88,7 @@ export default function ChatInterface() {
             <div className="text-center text-gray-500">
               <p className="text-lg">Start a conversation</p>
               <p className="text-sm mt-2">
-                Ask questions about hisory. The chat bot will answer from the history archive.
+                Ask questions about history. The chat bot will answer from the history archive.
               </p>
             </div>
           </div>
