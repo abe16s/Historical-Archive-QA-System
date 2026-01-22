@@ -5,14 +5,14 @@ import DocumentSelector from '@/components/DocumentSelector';
 
 export default function Home() {
   return (
-    <div className="flex h-screen bg-gray-50 dark:bg-gray-950">
-      <div className="flex-1 flex flex-col">
-        <div className="flex-1 overflow-hidden">
-          <ChatInterface />
-        </div>
+    <div className="flex h-[calc(100vh-4rem)] bg-white">
+      <div className="flex-1 flex flex-col pr-80">
+        <ChatInterface />
       </div>
-      <div className="w-80 border-l border-gray-200 dark:border-gray-800 p-4 overflow-y-auto">
-        <DocumentSelector />
+      <div className="fixed right-0 top-16 bottom-0 w-80 border-l border-gray-300 bg-white overflow-y-auto">
+        <div className="p-4">
+          <DocumentSelector />
+        </div>
       </div>
     </div>
   );

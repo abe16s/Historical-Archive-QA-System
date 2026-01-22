@@ -66,14 +66,16 @@ export default function ChatInterface() {
   }
 
   return (
-    <div className="flex flex-col h-full bg-white dark:bg-gray-900">
-      <div className="flex-1 overflow-y-auto p-4 space-y-4">
+    <div className="flex flex-col h-full bg-white">
+      <div className="flex-1 overflow-y-auto p-4 pb-24 space-y-4">
         {messages.length === 0 ? (
-          <div className="text-center text-gray-500 dark:text-gray-400 mt-8">
-            <p className="text-lg">Start a conversation</p>
-            <p className="text-sm mt-2">
-              Ask questions about your indexed documents
-            </p>
+          <div className="flex items-center justify-center h-full">
+            <div className="text-center text-gray-500">
+              <p className="text-lg">Start a conversation</p>
+              <p className="text-sm mt-2">
+                Ask questions about your indexed documents
+              </p>
+            </div>
           </div>
         ) : (
           messages.map((message, idx) => (
@@ -86,14 +88,14 @@ export default function ChatInterface() {
               <div
                 className={`max-w-3xl rounded-lg px-4 py-3 ${
                   message.role === 'user'
-                    ? 'bg-blue-600 text-white'
-                    : 'bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-white'
+                    ? 'bg-black text-white'
+                    : 'bg-gray-100 text-gray-900'
                 }`}
               >
                 {message.role === 'user' ? (
                   <p className="whitespace-pre-wrap">{message.content}</p>
                 ) : (
-                  <div className="prose prose-sm dark:prose-invert max-w-none">
+                  <div className="prose prose-sm max-w-none">
                     <ReactMarkdown
                       components={{
                         p: ({ children }) => <p className="mb-2 last:mb-0">{children}</p>,
@@ -106,19 +108,19 @@ export default function ChatInterface() {
                         code: ({ children, className }) => {
                           const isInline = !className;
                           return isInline ? (
-                            <code className="bg-gray-200 dark:bg-gray-700 px-1 py-0.5 rounded text-sm">{children}</code>
+                            <code className="bg-gray-200 px-1 py-0.5 rounded text-sm">{children}</code>
                           ) : (
-                            <code className="block bg-gray-200 dark:bg-gray-700 p-2 rounded text-sm overflow-x-auto">{children}</code>
+                            <code className="block bg-gray-200 p-2 rounded text-sm overflow-x-auto">{children}</code>
                           );
                         },
                         pre: ({ children }) => <pre className="mb-2">{children}</pre>,
                         blockquote: ({ children }) => (
-                          <blockquote className="border-l-4 border-gray-300 dark:border-gray-600 pl-4 italic my-2">
+                          <blockquote className="border-l-4 border-gray-300 pl-4 italic my-2">
                             {children}
                           </blockquote>
                         ),
                         a: ({ children, href }) => (
-                          <a href={href} className="text-blue-600 dark:text-blue-400 hover:underline" target="_blank" rel="noopener noreferrer">
+                          <a href={href} className="text-black hover:underline font-semibold" target="_blank" rel="noopener noreferrer">
                             {children}
                           </a>
                         ),
@@ -129,15 +131,15 @@ export default function ChatInterface() {
                   </div>
                 )}
                 {message.sources && message.sources.length > 0 && (
-                  <div className="mt-3 pt-3 border-t border-gray-300 dark:border-gray-600">
-                    <p className="text-xs font-semibold mb-2 text-gray-700 dark:text-gray-300">
+                  <div className="mt-3 pt-3 border-t border-gray-300">
+                    <p className="text-xs font-semibold mb-2 text-gray-700">
                       Sources ({message.sources.length}):
                     </p>
                     <div className="flex flex-wrap gap-2">
                       {message.sources.map((source, i) => (
                         <span
                           key={i}
-                          className="inline-flex items-center px-2.5 py-1 rounded-md text-xs font-medium bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 border border-blue-200 dark:border-blue-800"
+                          className="inline-flex items-center px-2.5 py-1 rounded-md text-xs font-medium bg-black text-white border border-black"
                         >
                           {source}
                         </span>
@@ -151,27 +153,27 @@ export default function ChatInterface() {
         )}
         {loading && (
           <div className="flex justify-start">
-            <div className="bg-gray-100 dark:bg-gray-800 rounded-lg px-4 py-2">
-              <p className="text-gray-500 dark:text-gray-400">Thinking...</p>
+            <div className="bg-gray-100 rounded-lg px-4 py-2">
+              <p className="text-gray-500">Thinking...</p>
             </div>
           </div>
         )}
         <div ref={messagesEndRef} />
       </div>
-      <div className="border-t border-gray-200 dark:border-gray-700 p-4">
+      <div className="fixed bottom-0 left-0 border-t border-gray-300 bg-white p-4" style={{ right: '20rem' }}>
         <form onSubmit={handleSubmit} className="flex gap-2">
           <input
             type="text"
             value={input}
             onChange={(e) => setInput(e.target.value)}
             placeholder="Ask a question..."
-            className="flex-1 px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-800 dark:text-white"
+            className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-black bg-white text-black"
             disabled={loading}
           />
           <button
             type="submit"
             disabled={loading || !input.trim()}
-            className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+            className="px-6 py-2 bg-black text-white rounded-lg hover:bg-gray-800 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             Send
           </button>
@@ -179,7 +181,7 @@ export default function ChatInterface() {
             <button
               type="button"
               onClick={clearChat}
-              className="px-4 py-2 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-300 dark:hover:bg-gray-600"
+              className="px-4 py-2 bg-gray-200 text-black rounded-lg hover:bg-gray-300"
             >
               Clear
             </button>

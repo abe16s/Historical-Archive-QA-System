@@ -28,19 +28,19 @@ export default function DocumentSelector() {
 
   if (loading) {
     return (
-      <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-4">
-        <p className="text-gray-500 dark:text-gray-400">Loading documents...</p>
+      <div className="bg-white rounded-lg shadow p-4">
+        <p className="text-gray-500">Loading documents...</p>
       </div>
     );
   }
 
   if (error) {
     return (
-      <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-4">
+      <div className="bg-white rounded-lg shadow p-4">
         <p className="text-red-500">{error}</p>
         <button
           onClick={loadIndexedDocuments}
-          className="mt-2 text-sm text-blue-600 hover:text-blue-800 dark:text-blue-400"
+          className="mt-2 text-sm text-black hover:text-gray-700 font-semibold"
         >
           Retry
         </button>
@@ -50,8 +50,8 @@ export default function DocumentSelector() {
 
   if (indexedDocs.length === 0) {
     return (
-      <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-4">
-        <p className="text-gray-500 dark:text-gray-400">
+      <div className="bg-white rounded-lg shadow p-4">
+        <p className="text-gray-500">
           No indexed documents. Upload and index documents first.
         </p>
       </div>
@@ -59,29 +59,29 @@ export default function DocumentSelector() {
   }
 
   return (
-    <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-4">
+    <div className="bg-white rounded-lg shadow p-4">
       <div className="mb-4">
-        <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+        <h3 className="text-lg font-semibold text-black">
           Indexed Documents
         </h3>
-        <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+        <p className="text-sm text-gray-500 mt-1">
           {indexedDocs.length} document{indexedDocs.length !== 1 ? 's' : ''} available
         </p>
       </div>
-      <div className="space-y-2 max-h-[calc(100vh-200px)] overflow-y-auto">
+      <div className="space-y-2">
         {indexedDocs.map((doc) => (
           <div
             key={doc.source}
-            className="p-3 rounded-lg border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+            className="p-3 rounded-lg border border-gray-300 hover:bg-gray-50 transition-colors"
           >
-            <p className="text-sm font-medium text-gray-900 dark:text-white break-words">
+            <p className="text-sm font-medium text-black break-words">
               {doc.source}
             </p>
-            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+            <p className="text-xs text-gray-500 mt-1">
               {doc.chunks_count} chunk{doc.chunks_count !== 1 ? 's' : ''}
             </p>
             {doc.last_indexed_at && (
-              <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">
+              <p className="text-xs text-gray-400 mt-1">
                 Indexed: {new Date(doc.last_indexed_at).toLocaleDateString()}
               </p>
             )}

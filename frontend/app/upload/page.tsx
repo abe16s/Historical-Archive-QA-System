@@ -62,24 +62,24 @@ export default function UploadPage() {
   }
 
   return (
-    <div className="max-w-2xl mx-auto p-6">
-      <h1 className="text-3xl font-bold mb-6 text-gray-900 dark:text-white">
+    <div className="max-w-2xl mx-auto p-6 bg-white">
+      <h1 className="text-3xl font-bold mb-6 text-black">
         Upload Document
       </h1>
 
-      <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6 space-y-4">
+      <div className="bg-white rounded-lg shadow p-6 space-y-4 border border-gray-300">
         <div>
-          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+          <label className="block text-sm font-medium text-black mb-2">
             Select Document
           </label>
           <input
             type="file"
             onChange={handleFileChange}
             accept=".pdf,.txt,.md"
-            className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 dark:file:bg-gray-700 dark:file:text-gray-300"
+            className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-gray-100 file:text-black hover:file:bg-gray-200"
             disabled={uploading || indexing}
           />
-          <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+          <p className="mt-1 text-xs text-gray-500">
             Supported formats: PDF, TXT, MD
           </p>
         </div>
@@ -90,12 +90,12 @@ export default function UploadPage() {
             id="autoIndex"
             checked={autoIndex}
             onChange={(e) => setAutoIndex(e.target.checked)}
-            className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+            className="w-4 h-4 text-black border-gray-300 rounded focus:ring-black"
             disabled={uploading || indexing}
           />
           <label
             htmlFor="autoIndex"
-            className="ml-2 text-sm text-gray-700 dark:text-gray-300"
+            className="ml-2 text-sm text-black"
           >
             Automatically index after upload
           </label>
@@ -104,29 +104,29 @@ export default function UploadPage() {
         <button
           onClick={handleUpload}
           disabled={!file || uploading || indexing}
-          className="w-full px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+          className="w-full px-4 py-2 bg-black text-white rounded-lg hover:bg-gray-800 disabled:opacity-50 disabled:cursor-not-allowed"
         >
           {uploading ? 'Uploading...' : indexing ? 'Indexing...' : 'Upload'}
         </button>
 
         {error && (
-          <div className="p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
-            <p className="text-sm text-red-800 dark:text-red-200">{error}</p>
+          <div className="p-3 bg-red-50 border border-red-200 rounded-lg">
+            <p className="text-sm text-red-800">{error}</p>
           </div>
         )}
 
         {uploadResult && (
-          <div className="p-4 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg">
-            <p className="text-sm font-medium text-green-800 dark:text-green-200 mb-2">
+          <div className="p-4 bg-gray-50 border border-gray-300 rounded-lg">
+            <p className="text-sm font-medium text-black mb-2">
               {uploadResult.message}
             </p>
             {uploadResult.filename && (
-              <p className="text-xs text-green-700 dark:text-green-300">
+              <p className="text-xs text-gray-600">
                 Filename: {uploadResult.filename}
               </p>
             )}
             {uploadResult.chunks_count !== undefined && (
-              <p className="text-xs text-green-700 dark:text-green-300">
+              <p className="text-xs text-gray-600">
                 Chunks: {uploadResult.chunks_count}
               </p>
             )}
@@ -134,7 +134,7 @@ export default function UploadPage() {
               <button
                 onClick={() => handleIndex(uploadResult.filename!)}
                 disabled={indexing}
-                className="mt-2 px-3 py-1 text-xs bg-green-600 text-white rounded hover:bg-green-700 disabled:opacity-50"
+                className="mt-2 px-3 py-1 text-xs bg-black text-white rounded hover:bg-gray-800 disabled:opacity-50"
               >
                 {indexing ? 'Indexing...' : 'Index Document'}
               </button>

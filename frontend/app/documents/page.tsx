@@ -89,40 +89,40 @@ export default function DocumentsPage() {
 
   if (loading) {
     return (
-      <div className="max-w-6xl mx-auto p-6">
-        <p className="text-gray-500 dark:text-gray-400">Loading documents...</p>
+      <div className="max-w-6xl mx-auto p-6 bg-white">
+        <p className="text-gray-500">Loading documents...</p>
       </div>
     );
   }
 
   return (
-    <div className="max-w-6xl mx-auto p-6">
+    <div className="max-w-6xl mx-auto p-6 bg-white">
       <div className="flex justify-between items-center mb-6">
-        <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
+        <h1 className="text-3xl font-bold text-black">
           Documents
         </h1>
         <button
           onClick={loadDocuments}
-          className="px-4 py-2 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-300 dark:hover:bg-gray-600"
+          className="px-4 py-2 bg-gray-200 text-black rounded-lg hover:bg-gray-300"
         >
           Refresh
         </button>
       </div>
 
       {error && (
-        <div className="mb-4 p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
-          <p className="text-sm text-red-800 dark:text-red-200">{error}</p>
+        <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg">
+          <p className="text-sm text-red-800">{error}</p>
         </div>
       )}
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Uploaded Documents */}
-        <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
-          <h2 className="text-xl font-semibold mb-4 text-gray-900 dark:text-white">
+        <div className="bg-white rounded-lg shadow p-6 border border-gray-300">
+          <h2 className="text-xl font-semibold mb-4 text-black">
             Uploaded Documents
           </h2>
           {uploadedDocs.length === 0 ? (
-            <p className="text-gray-500 dark:text-gray-400">
+            <p className="text-gray-500">
               No documents uploaded yet.
             </p>
           ) : (
@@ -130,21 +130,21 @@ export default function DocumentsPage() {
               {uploadedDocs.map((doc) => (
                 <div
                   key={doc.key}
-                  className="p-3 border border-gray-200 dark:border-gray-700 rounded-lg"
+                  className="p-3 border border-gray-300 rounded-lg"
                 >
                   <div className="flex justify-between items-start">
                     <div className="flex-1">
-                      <p className="font-medium text-gray-900 dark:text-white">
+                      <p className="font-medium text-black">
                         {doc.original_filename || doc.key}
                       </p>
-                      <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                      <p className="text-xs text-gray-500 mt-1">
                         Size: {formatFileSize(doc.size)}
                       </p>
-                      <p className="text-xs text-gray-500 dark:text-gray-400">
+                      <p className="text-xs text-gray-500">
                         Modified: {formatDate(doc.last_modified)}
                       </p>
                       {isIndexed(doc.original_filename || doc.key) && (
-                        <span className="inline-block mt-2 px-2 py-1 text-xs bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200 rounded">
+                        <span className="inline-block mt-2 px-2 py-1 text-xs bg-gray-100 text-black border border-black rounded">
                           Indexed
                         </span>
                       )}
@@ -153,7 +153,7 @@ export default function DocumentsPage() {
                       <button
                         onClick={() => handleIndex(doc.original_filename || doc.key)}
                         disabled={indexing === doc.key}
-                        className="ml-2 px-3 py-1 text-sm bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50"
+                        className="ml-2 px-3 py-1 text-sm bg-black text-white rounded hover:bg-gray-800 disabled:opacity-50"
                       >
                         {indexing === doc.key ? 'Indexing...' : 'Index'}
                       </button>
@@ -166,12 +166,12 @@ export default function DocumentsPage() {
         </div>
 
         {/* Indexed Documents */}
-        <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
-          <h2 className="text-xl font-semibold mb-4 text-gray-900 dark:text-white">
+        <div className="bg-white rounded-lg shadow p-6 border border-gray-300">
+          <h2 className="text-xl font-semibold mb-4 text-black">
             Indexed Documents
           </h2>
           {indexedDocs.length === 0 ? (
-            <p className="text-gray-500 dark:text-gray-400">
+            <p className="text-gray-500">
               No documents indexed yet. Index documents to enable Q&A.
             </p>
           ) : (
@@ -179,18 +179,18 @@ export default function DocumentsPage() {
               {indexedDocs.map((doc) => (
                 <div
                   key={doc.source}
-                  className="p-3 border border-gray-200 dark:border-gray-700 rounded-lg"
+                  className="p-3 border border-gray-300 rounded-lg"
                 >
                   <div className="flex justify-between items-start">
                     <div className="flex-1">
-                      <p className="font-medium text-gray-900 dark:text-white">
+                      <p className="font-medium text-black">
                         {doc.source}
                       </p>
-                      <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                      <p className="text-xs text-gray-500 mt-1">
                         {doc.chunks_count} chunks
                       </p>
                       {doc.last_indexed_at && (
-                        <p className="text-xs text-gray-500 dark:text-gray-400">
+                        <p className="text-xs text-gray-500">
                           Indexed: {formatDate(doc.last_indexed_at)}
                         </p>
                       )}
@@ -198,7 +198,7 @@ export default function DocumentsPage() {
                     <button
                       onClick={() => handleDelete(doc.source)}
                       disabled={deleting === doc.source}
-                      className="ml-2 px-3 py-1 text-sm bg-red-600 text-white rounded hover:bg-red-700 disabled:opacity-50"
+                      className="ml-2 px-3 py-1 text-sm bg-black text-white rounded hover:bg-gray-800 disabled:opacity-50"
                     >
                       {deleting === doc.source ? 'Deleting...' : 'Delete'}
                     </button>
