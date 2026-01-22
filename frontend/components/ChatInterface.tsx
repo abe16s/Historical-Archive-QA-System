@@ -2,6 +2,7 @@
 
 import { useState, useRef, useEffect } from 'react';
 import { sendChatMessage, ChatResponse } from '@/lib/api';
+import ReactMarkdown from 'react-markdown';
 
 interface Message {
   role: 'user' | 'assistant';
@@ -10,11 +11,7 @@ interface Message {
   timestamp?: string;
 }
 
-interface ChatInterfaceProps {
-  selectedSources?: string[];
-}
-
-export default function ChatInterface({ selectedSources = [] }: ChatInterfaceProps) {
+export default function ChatInterface() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
@@ -77,11 +74,6 @@ export default function ChatInterface({ selectedSources = [] }: ChatInterfacePro
             <p className="text-sm mt-2">
               Ask questions about your indexed documents
             </p>
-            {selectedSources.length > 0 && (
-              <p className="text-xs mt-2 text-blue-600 dark:text-blue-400">
-                {selectedSources.length} document(s) selected for answering
-              </p>
-            )}
           </div>
         ) : (
           messages.map((message, idx) => (
@@ -92,23 +84,65 @@ export default function ChatInterface({ selectedSources = [] }: ChatInterfacePro
               }`}
             >
               <div
-                className={`max-w-3xl rounded-lg px-4 py-2 ${
+                className={`max-w-3xl rounded-lg px-4 py-3 ${
                   message.role === 'user'
                     ? 'bg-blue-600 text-white'
                     : 'bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-white'
                 }`}
               >
-                <p className="whitespace-pre-wrap">{message.content}</p>
+                {message.role === 'user' ? (
+                  <p className="whitespace-pre-wrap">{message.content}</p>
+                ) : (
+                  <div className="prose prose-sm dark:prose-invert max-w-none">
+                    <ReactMarkdown
+                      components={{
+                        p: ({ children }) => <p className="mb-2 last:mb-0">{children}</p>,
+                        ul: ({ children }) => <ul className="list-disc pl-4 mb-2">{children}</ul>,
+                        ol: ({ children }) => <ol className="list-decimal pl-4 mb-2">{children}</ol>,
+                        li: ({ children }) => <li className="mb-1">{children}</li>,
+                        h1: ({ children }) => <h1 className="text-xl font-bold mb-2 mt-3 first:mt-0">{children}</h1>,
+                        h2: ({ children }) => <h2 className="text-lg font-bold mb-2 mt-3 first:mt-0">{children}</h2>,
+                        h3: ({ children }) => <h3 className="text-base font-bold mb-2 mt-2 first:mt-0">{children}</h3>,
+                        code: ({ children, className }) => {
+                          const isInline = !className;
+                          return isInline ? (
+                            <code className="bg-gray-200 dark:bg-gray-700 px-1 py-0.5 rounded text-sm">{children}</code>
+                          ) : (
+                            <code className="block bg-gray-200 dark:bg-gray-700 p-2 rounded text-sm overflow-x-auto">{children}</code>
+                          );
+                        },
+                        pre: ({ children }) => <pre className="mb-2">{children}</pre>,
+                        blockquote: ({ children }) => (
+                          <blockquote className="border-l-4 border-gray-300 dark:border-gray-600 pl-4 italic my-2">
+                            {children}
+                          </blockquote>
+                        ),
+                        a: ({ children, href }) => (
+                          <a href={href} className="text-blue-600 dark:text-blue-400 hover:underline" target="_blank" rel="noopener noreferrer">
+                            {children}
+                          </a>
+                        ),
+                      }}
+                    >
+                      {message.content}
+                    </ReactMarkdown>
+                  </div>
+                )}
                 {message.sources && message.sources.length > 0 && (
-                  <div className="mt-2 pt-2 border-t border-gray-300 dark:border-gray-600">
-                    <p className="text-xs font-semibold mb-1">Sources:</p>
-                    <ul className="text-xs space-y-1">
+                  <div className="mt-3 pt-3 border-t border-gray-300 dark:border-gray-600">
+                    <p className="text-xs font-semibold mb-2 text-gray-700 dark:text-gray-300">
+                      Sources ({message.sources.length}):
+                    </p>
+                    <div className="flex flex-wrap gap-2">
                       {message.sources.map((source, i) => (
-                        <li key={i} className="opacity-90">
-                          • {source}
-                        </li>
+                        <span
+                          key={i}
+                          className="inline-flex items-center px-2.5 py-1 rounded-md text-xs font-medium bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 border border-blue-200 dark:border-blue-800"
+                        >
+                          {source}
+                        </span>
                       ))}
-                    </ul>
+                    </div>
                   </div>
                 )}
               </div>

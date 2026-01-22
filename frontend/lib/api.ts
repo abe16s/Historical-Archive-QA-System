@@ -48,6 +48,51 @@ export interface ChatResponse {
   timestamp?: string;
 }
 
+export interface CitationAccuracy {
+  total_citations: number;
+  valid_citations: number;
+  citation_accuracy: number;
+  missing_sources: string[];
+  invalid_citations: string[];
+}
+
+export interface ContextRelevance {
+  average_similarity: number;
+  min_similarity: number;
+  max_similarity: number;
+  relevant_chunks: number;
+  total_chunks: number;
+}
+
+export interface AnswerFaithfulness {
+  faithfulness_score: number;
+  supported_claims: number;
+  total_claims: number;
+  unsupported_claims: string[];
+}
+
+export interface EvaluationMetrics {
+  citation_accuracy: CitationAccuracy;
+  context_relevance: ContextRelevance;
+  answer_faithfulness: AnswerFaithfulness;
+  overall_score: number;
+  evaluation_timestamp: string;
+}
+
+export interface EvaluationRequest {
+  query: string;
+  answer: string;
+  context_chunks: Array<Record<string, any>>;
+  sources: string[];
+}
+
+export interface EvaluationResponse {
+  query: string;
+  answer: string;
+  metrics: EvaluationMetrics;
+  recommendations: string[];
+}
+
 // API functions
 export async function uploadDocument(file: File): Promise<DocumentUploadResponse> {
   const formData = new FormData();
@@ -140,3 +185,36 @@ export async function sendChatMessage(
   return response.json();
 }
 
+export async function evaluateResponse(
+  request: EvaluationRequest
+): Promise<EvaluationResponse> {
+  const response = await fetch(`${API_BASE_URL}/evaluation/evaluate`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(request),
+  });
+
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({ detail: 'Evaluation failed' }));
+    throw new Error(error.detail || 'Failed to evaluate response');
+  }
+
+  return response.json();
+}
+
+export async function evaluateChatResponse(
+  query: string
+): Promise<EvaluationResponse> {
+  const response = await fetch(`${API_BASE_URL}/evaluation/evaluate-chat?query=${encodeURIComponent(query)}`, {
+    method: 'POST',
+  });
+
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({ detail: 'Evaluation failed' }));
+    throw new Error(error.detail || 'Failed to evaluate chat response');
+  }
+
+  return response.json();
+}
