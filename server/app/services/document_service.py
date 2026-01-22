@@ -199,8 +199,8 @@ class DocumentService:
                 raise HTTPException(
                     status_code=500,
                     detail=(
-                        "PDF processing library (PyPDF2) is not installed. "
-                        "Please install it with: pip install PyPDF2"
+                        "PDF processing library (PyMuPDF) is not installed. "
+                        "Please install it with: pip install pymupdf"
                     ),
                 )
             except ValueError as exc:

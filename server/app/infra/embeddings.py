@@ -20,5 +20,3 @@ def generate_embeddings(texts: List[str], model) -> List[List[float]]:
 def generate_embedding(text: str, model) -> List[float]:
     """Generate embedding for a single text."""
     return generate_embeddings([text], model)[0]
-
-
