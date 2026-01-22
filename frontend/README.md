@@ -9,6 +9,7 @@ A Next.js frontend for the Historical Archive QA System, providing a user-friend
 - **Document Management**: View and manage uploaded and indexed documents
 - **Document Selection**: Select/deselect specific documents for answering questions
 - **Chat Interface**: Interactive Q&A with conversation history and source citations
+- **RAG Evaluation**: Evaluate RAG responses for factual grounding, citation accuracy, and context relevance
 
 ## Setup
 
@@ -49,16 +50,16 @@ npm start
 ```
 frontend/
 ├── app/
-│   ├── api/              # API route handlers
 │   ├── documents/         # Documents management page
 │   ├── upload/           # Document upload page
-│   ├── layout.tsx        # Root layout with navigation
+│   ├── evaluation/       # RAG evaluation page
+│   ├── layout.tsx        # Root layout with fixed navigation
 │   ├── page.tsx          # Chat page (home)
 │   └── globals.css       # Global styles
 ├── components/
-│   ├── ChatInterface.tsx      # Chat UI component
-│   ├── DocumentSelector.tsx   # Document selection component
-│   └── Navigation.tsx         # Navigation bar
+│   ├── ChatInterface.tsx      # Chat UI component with fixed input
+│   ├── DocumentSelector.tsx   # Document selection sidebar component
+│   └── Navigation.tsx         # Fixed navigation bar
 ├── lib/
 │   └── api.ts            # API client functions
 └── package.json
@@ -75,9 +76,16 @@ frontend/
    - Delete indexed documents
 
 3. **Ask Questions**: On the home page (Chat):
-   - Select which indexed documents to use for answering
+   - Select which indexed documents to use for answering (via sidebar)
    - Type your question and get answers with source citations
    - Conversation history is maintained automatically
+   - Fixed layout: navbar at top, sidebar on right, chat input at bottom
+
+4. **Evaluate Responses**: Navigate to the Evaluation page to:
+   - Evaluate RAG responses in manual mode (provide query, answer, context, sources)
+   - Evaluate responses in chat mode (automatically evaluates chat responses)
+   - View detailed metrics: citation accuracy, context relevance, answer faithfulness
+   - Get recommendations for improving response quality
 
 ## API Integration
 
@@ -89,6 +97,18 @@ The frontend communicates with the FastAPI backend through the following endpoin
 - `GET /documents/indexed` - List indexed documents
 - `DELETE /documents/indexed/{source}` - Delete indexed document
 - `POST /chat/` - Send chat message and get response
+- `POST /evaluation/evaluate` - Evaluate RAG response (manual mode)
+- `POST /evaluation/evaluate-chat` - Evaluate chat response (chat mode)
+
+## UI/UX Features
+
+- **Fixed Layout**: 
+  - Fixed navigation bar at the top
+  - Fixed sidebar on the right for document selection
+  - Fixed chat input at the bottom
+  - Only chat history is scrollable
+- **Color Scheme**: White background with black buttons and highlights for clean, modern appearance
+- **Responsive Design**: Optimized for different screen sizes
 
 ## Technologies
 
@@ -96,3 +116,4 @@ The frontend communicates with the FastAPI backend through the following endpoin
 - **TypeScript** - Type safety
 - **Tailwind CSS** - Styling
 - **React Hooks** - State management
+- **React Markdown** - Markdown rendering for chat responses
