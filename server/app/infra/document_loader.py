@@ -262,7 +262,7 @@ def validate_file_upload(
     if file_ext not in allowed_extensions:
         return False, f"File type not supported. Allowed types: {', '.join(allowed_extensions)}"
 
-    max_bytes = max_size_mb * 1024 * 1024
+    max_bytes = max_size_mb * 1024 * 1024 * 1024
     if file_size > max_bytes:
         return False, f"File size exceeds maximum allowed size of {max_size_mb}MB"
 
