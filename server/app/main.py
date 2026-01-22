@@ -7,8 +7,8 @@ from app.core.config import settings
 
 def create_app() -> FastAPI:
     app = FastAPI(
-        title="RAG Chat Bot",
-        description="A simple RAG (Retrieval-Augmented Generation) chat bot",
+        title="Historical Archive RAG Chatbot",
+        description="A RAG-based Chat bot for querying and analyzing historical documents.",
         version="1.0.0",
     )
 
@@ -37,6 +37,11 @@ def create_app() -> FastAPI:
             "message": "RAG Chat Bot API",
             "docs": "/docs",
         }
+
+    @app.get("/health")
+    async def health_check() -> dict:
+        """Health check endpoint."""
+        return {"status": "ok"}
 
     return app
 
