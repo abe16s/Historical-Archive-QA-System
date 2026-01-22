@@ -282,10 +282,10 @@ Once the server is running, visit:
 
 ## Architecture
 
-- **Document Processing**: PyPDF2 for PDF text extraction, native support for TXT/MD
+- **Document Processing**: PyMuPDF for PDF text extraction, native support for TXT/MD
 - **Embeddings**: SentenceTransformer (all-MiniLM-L6-v2) - local, no API calls, no quota limits
 - **Vector Store**: ChromaDB for similarity search
-- **LLM**: Google Gemini via LangChain for answer generation
+- **LLM**: Google Gemini via direct API calls for answer generation
 - **Storage**: Local filesystem for document storage
 - **API**: FastAPI with automatic OpenAPI documentation
 
