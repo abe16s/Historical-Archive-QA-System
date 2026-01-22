@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 from datetime import datetime, timezone
-from typing import List, Any, Optional, Dict
+from typing import List, Any, Optional, Dict, Union
 
 from app.core.config import settings
 from app.infra.rag_engine import rag_pipeline
@@ -9,7 +9,7 @@ from app.infra.rag_engine import rag_pipeline
 @dataclass
 class RAGResult:
     text: str
-    sources: List[str]
+    sources: List[Union[str, Dict[str, Any]]]  # Can be strings (legacy) or SourceInfo dicts
     conversation_id: str
     timestamp: datetime
 
@@ -36,6 +36,7 @@ class RAGService:
         query: str, 
         conversation_history: Optional[List[Dict[str, str]]] = None,
         return_context: bool = False,
+        api_base_url: str = "http://localhost:8000",
     ) -> RAGResult:
         """
         Run the RAG pipeline for a query and return a structured result.
@@ -44,6 +45,7 @@ class RAGService:
             query: The user's question
             conversation_history: Previous messages in the conversation
             return_context: If True, includes context_chunks in the result for evaluation
+            api_base_url: Base URL for generating source document links
         """
         result = rag_pipeline(
             query=query,
@@ -54,15 +56,17 @@ class RAGService:
             temperature=self._temperature,
             conversation_history=conversation_history,
             return_context=return_context,
+            api_base_url=api_base_url,
         )
 
         timestamp = datetime.now(timezone.utc)
         
+        # Extract sources - now returns SourceInfo dicts
+        sources = result.get("sources", []) if isinstance(result, dict) else []
+        
         rag_result = RAGResult(
-            text=result["response"],
-            sources=result.get("saved", result.get("sources", []))
-            if isinstance(result, dict)
-            else [],
+            text=result["response"] if isinstance(result, dict) else "",
+            sources=sources,
             conversation_id="",  # Will be set by the route handler
             timestamp=timestamp,
         )

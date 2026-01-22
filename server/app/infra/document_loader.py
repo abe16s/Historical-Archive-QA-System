@@ -80,7 +80,8 @@ def process_uploaded_file(
     if isinstance(file_content, list):
         for page_data in file_content:
             page_text = page_data.get("text", "")
-            page_num = page_data.get("page", 1)
+            page_num = page_data.get("page", 1)  # Logical page number from footer
+            pdf_page_index = page_data.get("pdf_page_index", page_num)  # Physical PDF page for URL
             page_chunks = split_text_into_chunks(page_text, chunk_size, chunk_overlap)
             for idx, chunk in enumerate(page_chunks):
                 chunks.append(
@@ -88,7 +89,8 @@ def process_uploaded_file(
                         "content": chunk,
                         "metadata": {
                             "source": filename,
-                            "page": page_num,
+                            "page": page_num,  # Logical page number (from footer) - used for citations
+                            "pdf_page_index": pdf_page_index,  # Physical PDF page - used for URL fragments
                             "chunk_index": idx,
                             "upload_type": "file_upload",
                         },
@@ -192,20 +194,24 @@ def extract_text_from_pdf(pdf_bytes: bytes) -> List[Dict[str, Any]]:
                 page_text = page.get_text() or ""
                 
                 if page_text.strip():
+                    # Physical PDF page index (1-based) - always use this for URL fragments
+                    pdf_page_index = pdf_page_idx + 1
+                    
                     # Try to extract actual page number from text (improved function)
                     extracted_page_num = _extract_page_number_from_text(page_text)
                     
                     if extracted_page_num:
                         extracted_page_numbers.append((pdf_page_idx, extracted_page_num))
-                        page_num = extracted_page_num
+                        page_num = extracted_page_num  # Logical page number from footer
                     else:
-                        # Use PDF page index (0-based, so add 1 for 1-based numbering)
-                        # This is a fallback - will be improved if we find page numbers later
-                        page_num = pdf_page_idx + 1
+                        # Use PDF page index as fallback for logical page number
+                        # This will be improved in post-processing if we find page numbers later
+                        page_num = pdf_page_index
                     
                     page_texts.append({
                         "text": page_text,
-                        "page": page_num
+                        "page": page_num,  # Logical page number (from footer or fallback)
+                        "pdf_page_index": pdf_page_index  # Physical PDF page (always pdf_page_idx + 1)
                     })
             except Exception as exc:
                 print(f"Warning: Could not extract text from page {pdf_page_idx + 1}: {exc}")

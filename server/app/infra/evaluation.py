@@ -1,13 +1,3 @@
-# infra/evaluation.py
-"""
-Evaluation module for measuring factual grounding in RAG responses.
-
-This module provides metrics to assess:
-- Answer faithfulness to retrieved context
-- Citation accuracy
-- Context relevance
-- Overall factual grounding quality
-"""
 import re
 from typing import List, Dict, Any, Tuple
 from app.schemas.evaluation import (
@@ -237,11 +227,9 @@ def evaluate_context_relevance(
         if similarity is not None and isinstance(similarity, (int, float)):
             similarities.append(float(similarity))
         else:
-            # Fallback: try to get distance and convert
             distance = chunk.get('distance')
             if distance is not None and isinstance(distance, (int, float)):
-                # Convert cosine distance to similarity (1 - distance/2)
-                similarity = max(0.0, min(1.0, 1.0 - (float(distance) / 2.0)))
+                similarity = max(0.0, 1.0 - float(distance))
                 similarities.append(similarity)
     
     if not similarities:

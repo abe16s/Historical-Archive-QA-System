@@ -41,9 +41,16 @@ export interface ChatRequest {
   conversation_id?: string;
 }
 
+export interface SourceInfo {
+  source: string;
+  page: number | null;
+  display_text: string;
+  url: string;
+}
+
 export interface ChatResponse {
   response: string;
-  sources: string[];
+  sources: SourceInfo[];
   conversation_id: string;
   timestamp?: string;
 }
@@ -162,6 +169,13 @@ export async function deleteIndexedDocument(source: string): Promise<IndexedDocu
   return response.json();
 }
 
+export interface QuotaError {
+  error: string;
+  message: string;
+  retry_after?: number;
+  quota_limit?: number;
+}
+
 export async function sendChatMessage(
   message: string,
   conversationId?: string
@@ -178,11 +192,41 @@ export async function sendChatMessage(
   });
 
   if (!response.ok) {
-    const error = await response.json().catch(() => ({ detail: 'Chat request failed' }));
-    throw new Error(error.detail || 'Failed to send chat message');
+    const errorData = await response.json().catch(() => ({ detail: 'Chat request failed' }));
+    
+    // Handle quota errors specially (FastAPI returns error details in 'detail' field)
+    if (response.status === 429) {
+      const error = errorData.detail || errorData;
+      if (typeof error === 'object' && error.error === 'quota_exceeded') {
+        const quotaError: QuotaError = error;
+        throw new QuotaExceededError(
+          quotaError.message || 'API quota exceeded',
+          quotaError.retry_after,
+          quotaError.quota_limit
+        );
+      }
+    }
+    
+    // Handle other errors
+    const errorMessage = typeof errorData.detail === 'string' 
+      ? errorData.detail 
+      : (errorData.detail?.message || errorData.message || 'Failed to send chat message');
+    throw new Error(errorMessage);
   }
 
   return response.json();
+}
+
+export class QuotaExceededError extends Error {
+  retryAfter?: number;
+  quotaLimit?: number;
+
+  constructor(message: string, retryAfter?: number, quotaLimit?: number) {
+    super(message);
+    this.name = 'QuotaExceededError';
+    this.retryAfter = retryAfter;
+    this.quotaLimit = quotaLimit;
+  }
 }
 
 export async function evaluateResponse(

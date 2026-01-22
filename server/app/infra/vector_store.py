@@ -60,13 +60,9 @@ def search_similar_documents(
         distances = results.get("distances", [[]])[0] if results.get("distances") else [None] * len(documents)
 
         for doc, metadata, doc_id, distance in zip(documents, metadatas, ids, distances):
-            # Convert distance to similarity (ChromaDB uses cosine distance, similarity = 1 - distance)
             similarity = None
             if distance is not None:
-                # ChromaDB returns cosine distance (0 = identical, 2 = opposite)
-                # Convert to similarity score (1 = identical, -1 = opposite)
-                # For evaluation, we want 0-1 range, so: similarity = 1 - (distance / 2)
-                similarity = max(0.0, min(1.0, 1.0 - (float(distance) / 2.0)))
+                similarity = max(0.0, 1.0 - float(distance))
             
             formatted_results.append(
                 {

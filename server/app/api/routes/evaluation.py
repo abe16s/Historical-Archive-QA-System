@@ -1,8 +1,5 @@
-# api/routes/evaluation.py
-"""
-API routes for evaluating RAG responses for factual grounding.
-"""
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
+from app.core.config import settings
 from app.schemas.evaluation import EvaluationRequest, EvaluationResponse
 from app.services.evaluation_service import EvaluationService
 from app.services.rag_service import RAGService
@@ -47,6 +44,7 @@ async def evaluate_response(
 @router.post("/evaluate-chat", response_model=EvaluationResponse)
 async def evaluate_chat_response(
     query: str,
+    request: Request,
     rag_service: RAGService = Depends(get_rag_service),
     evaluation_service: EvaluationService = Depends(get_evaluation_service),
 ) -> EvaluationResponse:
@@ -61,11 +59,21 @@ async def evaluate_chat_response(
     This is useful for real-time evaluation during chat interactions.
     """
     try:
-        # Run RAG pipeline with context chunks returned
+        base_url = str(request.base_url).rstrip('/')
+        api_base_url = base_url or f"http://{settings.API_HOST}:{settings.API_PORT}"
+        
         rag_result = await rag_service.answer_question(
             query=query,
-            return_context=True
+            return_context=True,
+            api_base_url=api_base_url
         )
+        
+        source_strings = []
+        for source in rag_result.sources:
+            if isinstance(source, dict):
+                source_strings.append(source.get("display_text", source.get("source", "")))
+            else:
+                source_strings.append(str(source))
         
         if not rag_result.context_chunks:
             raise HTTPException(
@@ -73,12 +81,11 @@ async def evaluate_chat_response(
                 detail="No context chunks retrieved. Cannot evaluate response."
             )
         
-        # Evaluate the response
         result = evaluation_service.evaluate(
             query=query,
             answer=rag_result.text,
             context_chunks=rag_result.context_chunks,
-            sources=rag_result.sources,
+            sources=source_strings,
         )
         
         return result

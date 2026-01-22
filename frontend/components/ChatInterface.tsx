@@ -1,14 +1,16 @@
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
-import { sendChatMessage, ChatResponse } from '@/lib/api';
+import { sendChatMessage, ChatResponse, SourceInfo, QuotaExceededError } from '@/lib/api';
 import ReactMarkdown from 'react-markdown';
 
 interface Message {
   role: 'user' | 'assistant';
   content: string;
-  sources?: string[];
+  sources?: SourceInfo[];
   timestamp?: string;
+  isError?: boolean;
+  isQuotaError?: boolean;
 }
 
 export default function ChatInterface() {
@@ -48,11 +50,24 @@ export default function ChatInterface() {
         },
       ]);
     } catch (error) {
+      let errorMessage: string;
+      let isQuotaError = false;
+      
+      if (error instanceof QuotaExceededError) {
+        // Format quota error nicely
+        isQuotaError = true;
+        errorMessage = error.message;
+      } else {
+        errorMessage = `Error: ${error instanceof Error ? error.message : 'Failed to get response'}`;
+      }
+      
       setMessages((prev) => [
         ...prev,
         {
           role: 'assistant',
-          content: `Error: ${error instanceof Error ? error.message : 'Failed to get response'}`,
+          content: errorMessage,
+          isError: true,
+          isQuotaError: isQuotaError,
         },
       ]);
     } finally {
@@ -73,7 +88,7 @@ export default function ChatInterface() {
             <div className="text-center text-gray-500">
               <p className="text-lg">Start a conversation</p>
               <p className="text-sm mt-2">
-                Ask questions about your indexed documents
+                Ask questions about hisory. The chat bot will answer from the history archive.
               </p>
             </div>
           </div>
@@ -89,6 +104,10 @@ export default function ChatInterface() {
                 className={`max-w-3xl rounded-lg px-4 py-3 ${
                   message.role === 'user'
                     ? 'bg-black text-white'
+                    : message.isError
+                    ? message.isQuotaError
+                      ? 'bg-yellow-50 border-2 border-yellow-400 text-yellow-900'
+                      : 'bg-red-50 border-2 border-red-400 text-red-900'
                     : 'bg-gray-100 text-gray-900'
                 }`}
               >
@@ -131,18 +150,34 @@ export default function ChatInterface() {
                   </div>
                 )}
                 {message.sources && message.sources.length > 0 && (
-                  <div className="mt-3 pt-3 border-t border-gray-300">
-                    <p className="text-xs font-semibold mb-2 text-gray-700">
+                  <div className="mt-3 pt-3 border-t border-gray-300 dark:border-gray-600">
+                    <p className="text-xs font-semibold mb-2 text-black dark:text-black">
                       Sources ({message.sources.length}):
                     </p>
                     <div className="flex flex-wrap gap-2">
-                      {message.sources.map((source, i) => (
-                        <span
+                      {message.sources.map((sourceInfo, i) => (
+                        <a
                           key={i}
-                          className="inline-flex items-center px-2.5 py-1 rounded-md text-xs font-medium bg-black text-white border border-black"
+                          href={sourceInfo.url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center px-2.5 py-1 rounded-md text-xs font-medium bg-black dark:bg-black text-white dark:text-white border border-black dark:border-black hover:bg-gray-800 dark:hover:bg-gray-800 transition-colors cursor-pointer"
                         >
-                          {source}
-                        </span>
+                          <svg
+                            className="w-3 h-3 mr-1"
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth={2}
+                              d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"
+                            />
+                          </svg>
+                          {sourceInfo.display_text}
+                        </a>
                       ))}
                     </div>
                   </div>

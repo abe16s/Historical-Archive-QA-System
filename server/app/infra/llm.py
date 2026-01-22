@@ -1,8 +1,18 @@
 from typing import List, Dict, Optional, Any
 import google.generativeai as genai
 from abc import ABC, abstractmethod
+import re
 
 from app.core.config import settings
+
+
+class QuotaExceededError(Exception):
+    """Custom exception for API quota/rate limit errors."""
+    def __init__(self, message: str, retry_after: Optional[float] = None, quota_limit: Optional[int] = None):
+        self.message = message
+        self.retry_after = retry_after
+        self.quota_limit = quota_limit
+        super().__init__(self.message)
 
 
 class LLMClient(ABC):
@@ -50,23 +60,86 @@ class GeminiClient(LLMClient):
         history = conversation_messages[:-1] if len(conversation_messages) > 1 else []
         current_query = conversation_messages[-1]["parts"][0] if conversation_messages else ""
         
-        if history:
-            chat = self.model.start_chat(history=history)
-            response = chat.send_message(
-                current_query,
-                generation_config=genai.types.GenerationConfig(temperature=self.temperature)
+        try:
+            if history:
+                chat = self.model.start_chat(history=history)
+                response = chat.send_message(
+                    current_query,
+                    generation_config=genai.types.GenerationConfig(temperature=self.temperature)
+                )
+            else:
+                response = self.model.generate_content(
+                    current_query,
+                    generation_config=genai.types.GenerationConfig(temperature=self.temperature)
+                )
+            
+            class Response:
+                def __init__(self, text: str):
+                    self.content = text
+            
+            return Response(response.text)
+        except Exception as e:
+            error_str = str(e)
+            error_repr = repr(e)
+            
+            is_quota_error = (
+                "429" in error_str or 
+                "quota" in error_str.lower() or 
+                "rate limit" in error_str.lower() or
+                "ResourceExhausted" in error_repr or
+                "exceeded" in error_str.lower()
             )
-        else:
-            response = self.model.generate_content(
-                current_query,
-                generation_config=genai.types.GenerationConfig(temperature=self.temperature)
-            )
-        
-        class Response:
-            def __init__(self, text: str):
-                self.content = text
-        
-        return Response(response.text)
+            
+            if is_quota_error:
+                retry_after = None
+                retry_patterns = [
+                    r'retry.*?(\d+\.?\d*)\s*s[ec]',
+                    r'retry_delay.*?seconds[:\s]+(\d+)',
+                    r'Please retry in (\d+\.?\d*)\s*s',
+                ]
+                for pattern in retry_patterns:
+                    retry_match = re.search(pattern, error_str, re.IGNORECASE)
+                    if retry_match:
+                        try:
+                            retry_after = float(retry_match.group(1))
+                            break
+                        except (ValueError, IndexError):
+                            continue
+                
+                quota_limit = None
+                limit_patterns = [
+                    r'limit[:\s]+(\d+)',
+                    r'quota.*?limit[:\s]+(\d+)',
+                    r'limit of (\d+)',
+                ]
+                for pattern in limit_patterns:
+                    limit_match = re.search(pattern, error_str, re.IGNORECASE)
+                    if limit_match:
+                        try:
+                            quota_limit = int(limit_match.group(1))
+                            break
+                        except (ValueError, IndexError):
+                            continue
+                
+                if quota_limit:
+                    message = f"API quota exceeded. You've reached the daily limit of {quota_limit} requests."
+                else:
+                    message = "API quota exceeded. You've reached the daily request limit."
+                
+                if retry_after:
+                    minutes = int(retry_after // 60)
+                    seconds = int(retry_after % 60)
+                    if minutes > 0:
+                        message += f" Please try again in {minutes} minute{'s' if minutes > 1 else ''}."
+                    elif seconds > 0:
+                        message += f" Please try again in {seconds} second{'s' if seconds > 1 else ''}."
+                    else:
+                        message += " Please try again in a few moments."
+                else:
+                    message += " Please try again later or check your API plan and billing details."
+                
+                raise QuotaExceededError(message, retry_after=retry_after, quota_limit=quota_limit)
+            raise
 
 
 def initialize_llm(provider: Optional[str] = None, api_key: Optional[str] = None) -> LLMClient:

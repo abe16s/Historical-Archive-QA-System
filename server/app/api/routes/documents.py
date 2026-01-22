@@ -1,6 +1,7 @@
 from typing import List
 
-from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
+from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, Request
+from fastapi.responses import Response
 from urllib.parse import unquote
 
 from app.schemas.documents import (
@@ -96,7 +97,6 @@ async def delete_indexed_document(
     Delete all indexed chunks for a given document source from the vector store.
     """
     try:
-        # URL decode the source parameter in case it's encoded
         decoded_source = unquote(source)
         return service.remove_indexed_document(decoded_source)
     except Exception as exc:  # pragma: no cover
@@ -105,4 +105,49 @@ async def delete_indexed_document(
             detail=f"Failed to delete indexed document: {str(exc)}",
         )
 
+
+@router.get("/view/{source:path}")
+async def view_document(
+    source: str,
+    request: Request,
+    service: DocumentService = Depends(get_document_service),
+):
+    """
+    Serve a document file for viewing/downloading.
+    The source parameter should be the filename (e.g., "document.pdf").
+    Supports page navigation via URL fragment (e.g., #page=5).
+    """
+    try:
+        decoded_source = unquote(source)
+        
+        files = service.list_files()
+        matching_file = None
+        
+        for file_info in files:
+            if file_info.original_filename == decoded_source:
+                matching_file = file_info
+                break
+        
+        if not matching_file:
+            raise HTTPException(status_code=404, detail=f"Document not found: {decoded_source}")
+        
+        file_bytes, content_type, metadata = service.get_file_bytes(matching_file.key)
+        
+        headers = {
+            "Content-Disposition": f'inline; filename="{decoded_source}"',
+        }
+        
+        media_type = content_type or "application/pdf"
+        
+        return Response(
+            content=file_bytes,
+            media_type=media_type,
+            headers=headers
+        )
+    except HTTPException:
+        raise
+    except FileNotFoundError:
+        raise HTTPException(status_code=404, detail="Document not found")
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"Failed to retrieve document: {str(exc)}")
 
